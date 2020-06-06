@@ -1,0 +1,1 @@
+epoch,train_loss,train_acc1,train_acc5,val_acc1,val_acc5,imagenetR_acc1,imagenetR_acc5
