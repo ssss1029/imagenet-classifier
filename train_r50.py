@@ -133,7 +133,28 @@ def main_worker(gpu, args):
                                 weight_decay=args.weight_decay, nesterov=True)
 
     # optionally resume from a checkpoint
-    args.start_epoch = 0
+    if os.path.isfile(args.resume):
+        print("=> loading checkpoint '{}'".format(args.resume))
+        if args.gpu is None:
+            checkpoint = torch.load(args.resume)
+        else:
+            # Map model to be loaded to specified single gpu.
+            loc = 'cuda:{}'.format(args.gpu)
+            checkpoint = torch.load(args.resume, map_location=loc)
+        args.start_epoch = checkpoint['epoch']
+        print('Start epoch:', args.start_epoch)
+        best_acc1 = checkpoint['best_acc1']
+        if args.gpu is not None:
+            # best_acc1 may be from a checkpoint from a different GPU
+            best_acc1 = best_acc1.to(args.gpu)
+        model.load_state_dict(checkpoint['state_dict'])
+        optimizer.load_state_dict(checkpoint['optimizer'])
+        print("=> loaded checkpoint '{}' (epoch {})"
+                .format(args.resume, checkpoint['epoch']))
+    else:
+        print("=> no checkpoint found at '{}'".format(args.resume))    
+        args.start_epoch = 0
+    
     cudnn.benchmark = True
 
     # Data loading code
@@ -195,8 +216,8 @@ def main_worker(gpu, args):
 
 
     log_path = os.path.join(args.save, "training_log.txt")
-    with open(log_path, "w") as f:
-        f.write("epoch,train_loss,train_acc1,train_acc5,val_acc1,val_acc5,imagenetR_acc1,imagenetR_acc5\n")
+    # with open(log_path, "w") as f:
+    #     f.write("epoch,train_loss,train_acc1,train_acc5,val_acc1,val_acc5,imagenetR_acc1,imagenetR_acc5\n")
 
     for epoch in range(args.start_epoch, args.epochs):
         
@@ -208,8 +229,8 @@ def main_worker(gpu, args):
         acc1_R, acc5_R = validate_imagenet_r(val_loader_imagenet_r, model, criterion, args)
 
         # remember best acc@1 and save checkpoint
-        is_best = acc1 > best_acc1
-        best_acc1 = max(acc1, best_acc1)
+        is_best = acc1_V > best_acc1
+        best_acc1 = max(acc1_V, best_acc1)
 
         save_checkpoint({
             'epoch': epoch + 1,
@@ -217,7 +238,7 @@ def main_worker(gpu, args):
             'state_dict': model.state_dict(),
             'best_acc1': best_acc1,
             'optimizer' : optimizer.state_dict(),
-        }, is_best, filename=os.path.join(args.save, "checkpoint.pth.tar"))
+        }, filename=os.path.join(args.save, "checkpoint.pth.tar"))
 
         with open(log_path, "a") as f:
             f.write(f"{epoch},{loss_T},{acc1_T},{acc5_T},{acc1_V},{acc5_V},{acc1_R},{acc5_R}\n")
@@ -358,10 +379,8 @@ def validate_imagenet_r(val_loader, model, criterion, args):
 
 
 
-def save_checkpoint(state, is_best, filename='./fresh/checkpoint.pth.tar'):
+def save_checkpoint(state, filename='./fresh/checkpoint.pth.tar'):
     torch.save(state, filename)
-    if is_best:
-        shutil.copyfile(filename, './fresh/model_best.pth.tar')
 
 
 class AverageMeter(object):
