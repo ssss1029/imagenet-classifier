@@ -1,7 +1,7 @@
 import torch
 import torch.nn as nn
 from torchvision.models.utils import load_state_dict_from_url
-
+import random
 
 __all__ = [
     'VGG', 'vgg11', 'vgg11_bn', 'vgg13', 'vgg13_bn', 'vgg16', 'vgg16_bn',
@@ -19,6 +19,32 @@ model_urls = {
     'vgg16_bn': 'https://download.pytorch.org/models/vgg16_bn-6c64b313.pth',
     'vgg19_bn': 'https://download.pytorch.org/models/vgg19_bn-c79401a0.pth',
 }
+
+class Distortions:
+    """
+    Distortions. 
+    Each takes in a tensor of shape (batch_size, C, W, H)
+    """
+
+    def channel_switch(x):
+        num_channels = x.shape[1]
+        for _ in range(5):
+            c1, c2 = random.randint(0, num_channels - 1), random.randint(0, num_channels - 1)
+            x[:, c1], x[:, c2] = x[:, c2], x[:, c1]
+        
+        return x
+    
+    def negative_dropout(x):
+        rand_filter_weight = (torch.round(torch.rand_like(x) + 0.475) * 2) - 1 # Random matrix of 1s and -1s
+        x = x * rand_filter_weight
+        return x
+    
+    def negate(x):
+        return -x
+
+distortion_functions = [func for func in dir(Distortions) if callable(getattr(Distortions, func)) and func[:2] != '__']
+distortion_functions = [getattr(Distortions, func) for func in distortion_functions]
+print(distortion_functions)
 
 class VGG(nn.Module):
     """
@@ -68,12 +94,14 @@ class VGG(nn.Module):
             (5): Dropout(p=0.5, inplace=False)
             (6): Linear(in_features=4096, out_features=100, bias=True)
         )
-        )
+    )
 
     """
 
-    def __init__(self, features, num_classes=1000, init_weights=True):
+    def __init__(self, features, num_classes=1000, init_weights=True, use_deepaugment_realtime=False, arch_name=None):
         super(VGG, self).__init__()
+        self.DeepAugRT = use_deepaugment_realtime
+        self.arch_name = arch_name
         self.features = features
         self.avgpool = nn.AdaptiveAvgPool2d((7, 7))
         self.classifier = nn.Sequential(
@@ -85,11 +113,44 @@ class VGG(nn.Module):
             nn.Dropout(),
             nn.Linear(4096, num_classes),
         )
+        
         if init_weights:
             self._initialize_weights()
 
-    def forward(self, x):
-        x = self.features(x)
+        if self.DeepAugRT:
+            # Setup options
+            if arch_name == 'vgg16':
+                # Distortion is ok after these layers
+                self.features_distort_layers = [4, 9, 16, 23, 30]
+            else:
+                raise NotImplementedError(f"Realtime Deepaugment not implemented for arch {arch_name}")
+            
+
+    def forward(self, x, num_distortions=0):
+        
+        if num_distortions != 0 and self.DeepAugRT != True:
+                raise NotImplementedError("I don't know how to use distortions without realtime deepaugment")
+        
+        if self.DeepAugRT:
+            # Figure out the distortions to do
+            # List of (layer, distortion_id) tuples
+            distortions_list = [(random.choice(self.features_distort_layers), random.choice(distortion_functions)) for _ in range(num_distortions)] 
+            distortions_dict = dict()
+            for layer, func in distortions_list:
+                if layer in distortions_dict:
+                    distortions_dict[layer].append(func)
+                else:
+                    distortions_dict[layer] = [func]
+        else:
+            distortions_dict = dict()
+
+        for layer, feat in enumerate(self.features):
+            x = feat(x)
+            
+            if layer in distortions_dict:
+                for func in distortions_dict[layer]:
+                    x = func(x)
+
         x = self.avgpool(x)
         x = torch.flatten(x, 1)
         x = self.classifier(x)
@@ -136,6 +197,7 @@ cfgs = {
 def _vgg(arch, cfg, batch_norm, pretrained, progress, **kwargs):
     if pretrained:
         kwargs['init_weights'] = False
+    kwargs['arch_name'] = arch
     model = VGG(make_layers(cfgs[cfg], batch_norm=batch_norm), **kwargs)
     if pretrained:
         state_dict = load_state_dict_from_url(model_urls[arch],

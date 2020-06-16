@@ -56,6 +56,7 @@ parser.add_argument('--symlink-distorted-data-dirs', default=False, action='stor
     help='Set this flag to make a symlinked distorted data directory so that there is the same \
         number of images as using just one distorted data directory')
 parser.add_argument('--data-val', help='path to validation dataset', default="/var/tmp/namespace/hendrycks/imagenet/val/")
+parser.add_argument('--num-distortions-feedforward', default=0, type=int)
 parser.add_argument('--save', default='checkpoints/TEMP', type=str)
 parser.add_argument('-a', '--arch', metavar='ARCH', default='vgg16')
 parser.add_argument('-j', '--workers', default=10, type=int, metavar='N',
@@ -231,7 +232,10 @@ def main_worker(gpu, args):
 
     print("=> creating model '{}'".format(args.arch))
     if args.arch == 'vgg16':
-        model = vgg16(pretrained=args.pretrained)
+        model = vgg16(
+            pretrained=args.pretrained, 
+            use_deepaugment_realtime=True
+        )
         model.classifier[-1] = torch.nn.Linear(4096, len(classes_chosen))
         print(model)
     else:
@@ -445,7 +449,7 @@ def train(train_loader, model, criterion, optimizer, scheduler, epoch, args):
         bx = images.cuda(args.gpu, non_blocking=True)
         by = target.cuda(args.gpu, non_blocking=True)
         
-        logits = model(bx)
+        logits = model(bx, num_distortions=args.num_distortions_feedforward)
 
         loss = criterion(logits, by)
 
