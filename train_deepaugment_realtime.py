@@ -61,7 +61,7 @@ parser.add_argument('--save', default='checkpoints/TEMP', type=str)
 parser.add_argument('-a', '--arch', metavar='ARCH', default='vgg16')
 parser.add_argument('-j', '--workers', default=10, type=int, metavar='N',
                     help='number of data loading workers (default: 4)')
-parser.add_argument('--epochs', default=30, type=int, metavar='N',
+parser.add_argument('--epochs', default=80, type=int, metavar='N',
                     help='number of total epochs to run')
 parser.add_argument('--start-epoch', default=0, type=int, metavar='N',
                     help='manual epoch number (useful on restarts)')
@@ -75,7 +75,7 @@ parser.add_argument('--lr', '--learning-rate', default=0.01, type=float,
                     metavar='LR', help='initial learning rate', dest='lr')
 parser.add_argument('--momentum', default=0.9, type=float, metavar='M',
                     help='momentum')
-parser.add_argument('--wd', '--weight-decay', default=1e-4, type=float,
+parser.add_argument('--wd', '--weight-decay', default=5e-4, type=float,
                     metavar='W', help='weight decay (default: 1e-4)',
                     dest='weight_decay')
 parser.add_argument('-p', '--print-freq', default=10, type=int,
@@ -234,7 +234,7 @@ def main_worker(gpu, args):
     if args.arch == 'vgg16':
         model = vgg16(
             pretrained=args.pretrained, 
-            use_deepaugment_realtime=True
+            use_deepaugment_realtime=False
         )
         model.classifier[-1] = torch.nn.Linear(4096, len(classes_chosen))
         print(model)
@@ -472,6 +472,7 @@ def train(train_loader, model, criterion, optimizer, scheduler, epoch, args):
         end = time.time()
 
         if i % args.print_freq == 0:
+            print(torch.norm(model.module.features[0].weight, p='fro'))
             progress.display(i)
     
     return losses.avg, top1.avg, top5.avg

@@ -26,21 +26,24 @@ class Distortions:
     Each takes in a tensor of shape (batch_size, C, W, H)
     """
 
-    def channel_switch(x):
-        num_channels = x.shape[1]
-        for _ in range(5):
-            c1, c2 = random.randint(0, num_channels - 1), random.randint(0, num_channels - 1)
-            x[:, c1], x[:, c2] = x[:, c2], x[:, c1]
+    # def channel_switch(x):
+    #     num_channels = x.shape[1]
+    #     for _ in range(5):
+    #         c1, c2 = random.randint(0, num_channels - 1), random.randint(0, num_channels - 1)
+    #         x[:, c1], x[:, c2] = x[:, c2], x[:, c1]
         
-        return x
+    #     return x
     
-    def negative_dropout(x):
-        rand_filter_weight = (torch.round(torch.rand_like(x) + 0.475) * 2) - 1 # Random matrix of 1s and -1s
-        x = x * rand_filter_weight
-        return x
+    # def negative_dropout(x):
+    #     rand_filter_weight = (torch.round(torch.rand_like(x) + 0.475) * 2) - 1 # Random matrix of 1s and -1s
+    #     x = x * rand_filter_weight
+    #     return x
     
-    def negate(x):
-        return -x
+    # def negate(x):
+    #     return -x
+
+    def identity(x):
+        return x
 
 distortion_functions = [func for func in dir(Distortions) if callable(getattr(Distortions, func)) and func[:2] != '__']
 distortion_functions = [getattr(Distortions, func) for func in distortion_functions]
@@ -147,7 +150,7 @@ class VGG(nn.Module):
         for layer, feat in enumerate(self.features):
             x = feat(x)
             
-            if layer in distortions_dict:
+            if layer in distortions_dict.keys():
                 for func in distortions_dict[layer]:
                     x = func(x)
 
@@ -157,6 +160,8 @@ class VGG(nn.Module):
         return x
 
     def _initialize_weights(self):
+        print("Initializing model weights")
+        
         for m in self.modules():
             if isinstance(m, nn.Conv2d):
                 nn.init.kaiming_normal_(m.weight, mode='fan_out', nonlinearity='relu')
