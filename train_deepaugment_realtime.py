@@ -234,7 +234,7 @@ def main_worker(gpu, args):
     if args.arch == 'vgg16':
         model = vgg16(
             pretrained=args.pretrained, 
-            use_deepaugment_realtime=False
+            use_deepaugment_realtime=True
         )
         model.classifier[-1] = torch.nn.Linear(4096, len(classes_chosen))
         print(model)

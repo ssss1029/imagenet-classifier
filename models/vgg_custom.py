@@ -26,24 +26,56 @@ class Distortions:
     Each takes in a tensor of shape (batch_size, C, W, H)
     """
 
-    # def channel_switch(x):
-    #     num_channels = x.shape[1]
-    #     for _ in range(5):
-    #         c1, c2 = random.randint(0, num_channels - 1), random.randint(0, num_channels - 1)
-    #         x[:, c1], x[:, c2] = x[:, c2], x[:, c1]
+    def channel_switch(x):
+        num_channels = x.shape[1]
+        for _ in range(1):
+            c1, c2 = random.randint(0, num_channels - 1), random.randint(0, num_channels - 1)
+            x[:, c1], x[:, c2] = x[:, c2], x[:, c1]
         
-    #     return x
+        return x
     
-    # def negative_dropout(x):
-    #     rand_filter_weight = (torch.round(torch.rand_like(x) + 0.475) * 2) - 1 # Random matrix of 1s and -1s
-    #     x = x * rand_filter_weight
-    #     return x
+    def negative_dropout(x):
+        rand_filter_weight = (torch.round(torch.rand_like(x) + 0.475) * 2) - 1 # Random matrix of 1s and -1s
+        x = x * rand_filter_weight
+        return x
     
-    # def negate(x):
-    #     return -x
-
     def identity(x):
         return x
+    
+    def patchNoise(x):
+        B, C, H, W = x.shape
+
+        assert H == W # Sanity Check
+        
+        patch_size = H // 4
+        top = random.randint(0, H - 1 - patch_size)
+        left = random.randint(0, W - 1 - patch_size)
+        bottom = top + patch_size
+        right = left + patch_size
+
+        x[:,:,top:bottom,left:right] = x[:,:,top:bottom,left:right] + (torch.rand_like(x[:,:,top:bottom,left:right]) - 0.5) * 0.01
+
+        return x
+
+    def patchDrouput(x):
+        B, C, H, W = x.shape
+
+        assert H == W # Sanity Check
+        
+        patch_size = H // 4
+        top = random.randint(0, H - 1 - patch_size)
+        left = random.randint(0, W - 1 - patch_size)
+        bottom = top + patch_size
+        right = left + patch_size
+
+        rand_filter_weight = torch.round(torch.rand_like(x[:,:,top:bottom,left:right]) + 0.45) # Random matrix of 1s and 0s
+        x[:,:,top:bottom,left:right] = x[:,:,top:bottom,left:right] * rand_filter_weight
+        return x
+    
+    def transpose(x):
+        return torch.transpose(x, 2, 3)
+
+
 
 distortion_functions = [func for func in dir(Distortions) if callable(getattr(Distortions, func)) and func[:2] != '__']
 distortion_functions = [getattr(Distortions, func) for func in distortion_functions]
