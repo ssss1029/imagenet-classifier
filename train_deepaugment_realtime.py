@@ -31,7 +31,8 @@ import torch.nn.functional as F
 
 from tqdm import tqdm
 
-from models.vgg_custom import vgg16
+from models.vgg_deepaugment_realtime import vgg16, vgg11
+from models.resnet_deepaugment_realtime import resnet18
 
 #############################################
 # This is code to generate our test dataset
@@ -56,7 +57,10 @@ parser.add_argument('--symlink-distorted-data-dirs', default=False, action='stor
     help='Set this flag to make a symlinked distorted data directory so that there is the same \
         number of images as using just one distorted data directory')
 parser.add_argument('--data-val', help='path to validation dataset', default="/var/tmp/namespace/hendrycks/imagenet/val/")
-parser.add_argument('--num-distortions-feedforward', default=0, type=int)
+
+parser.add_argument('--num-distortions-feedforward', default=0, type=int) # Only got VGGs
+parser.add_argument('--block-distort-prob', default=0.0, type=float) # only for ResNets
+
 parser.add_argument('--save', default='checkpoints/TEMP', type=str)
 parser.add_argument('-a', '--arch', metavar='ARCH', default='vgg16')
 parser.add_argument('-j', '--workers', default=10, type=int, metavar='N',
@@ -238,6 +242,19 @@ def main_worker(gpu, args):
         )
         model.classifier[-1] = torch.nn.Linear(4096, len(classes_chosen))
         print(model)
+    elif args.arch == 'vgg11':
+        model = vgg11(
+            pretrained=args.pretrained, 
+            use_deepaugment_realtime=True
+        )
+        model.classifier[-1] = torch.nn.Linear(4096, len(classes_chosen))
+        print(model)
+    elif args.arch == 'resnet18':
+        model = resnet18(
+            pretrained=args.pretrained
+        )
+        model.fc = torch.nn.Linear(512, len(classes_chosen))
+        print(model)
     else:
         raise NotImplementedError()
 
@@ -252,7 +269,7 @@ def main_worker(gpu, args):
 
     # optionally resume from a checkpoint
     args.start_epoch = 0
-    if False:#args.resume:
+    if args.resume:
         if os.path.isfile(args.resume):
             print("=> loading checkpoint '{}'".format(args.resume))
             if args.gpu is None:
@@ -390,8 +407,9 @@ def main_worker(gpu, args):
     ##### Main Training Loop
     ###########################################################################
 
-    with open(os.path.join(args.save, 'training_log.csv'), 'w') as f:
-        f.write('epoch,train_loss,train_acc1,train_acc5,val_loss,val_acc1,val_acc5\n')
+    if not args.resume:
+        with open(os.path.join(args.save, 'training_log.csv'), 'w') as f:
+            f.write('epoch,train_loss,train_acc1,train_acc5,val_loss,val_acc1,val_acc5\n')
 
     for epoch in range(args.start_epoch, args.epochs):
 
@@ -449,7 +467,10 @@ def train(train_loader, model, criterion, optimizer, scheduler, epoch, args):
         bx = images.cuda(args.gpu, non_blocking=True)
         by = target.cuda(args.gpu, non_blocking=True)
         
-        logits = model(bx, num_distortions=args.num_distortions_feedforward)
+        if 'vgg' in args.arch:
+            logits = model(bx, num_distortions=args.num_distortions_feedforward)
+        elif 'resnet' in args.arch:
+            logits = model(bx, block_distort_prob=args.block_distort_prob)
 
         loss = criterion(logits, by)
 
@@ -472,7 +493,6 @@ def train(train_loader, model, criterion, optimizer, scheduler, epoch, args):
         end = time.time()
 
         if i % args.print_freq == 0:
-            print(torch.norm(model.module.features[0].weight, p='fro'))
             progress.display(i)
     
     return losses.avg, top1.avg, top5.avg

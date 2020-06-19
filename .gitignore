@@ -2,3 +2,5 @@
 *.pth.tar
 
 **/__pycache__/**
+
+*.pth
