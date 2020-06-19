@@ -79,7 +79,7 @@ class Distortions:
 
 distortion_functions = [func for func in dir(Distortions) if callable(getattr(Distortions, func)) and func[:2] != '__']
 distortion_functions = [getattr(Distortions, func) for func in distortion_functions]
-print(distortion_functions)
+# print(distortion_functions)
 
 class VGG(nn.Module):
     """

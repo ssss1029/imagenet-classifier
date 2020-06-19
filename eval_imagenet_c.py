@@ -120,21 +120,21 @@ def get_net_results(dataloader, net):
 print("=> Creating Model")
 if args.arch == 'vgg16':
     model = vgg16(
-        pretrained=args.pretrained, 
+        pretrained=False, 
         use_deepaugment_realtime=True
     )
     model.classifier[-1] = torch.nn.Linear(4096, len(classes_chosen))
     print(model)
 elif args.arch == 'vgg11':
     model = vgg11(
-        pretrained=args.pretrained, 
+        pretrained=False, 
         use_deepaugment_realtime=True
     )
     model.classifier[-1] = torch.nn.Linear(4096, len(classes_chosen))
     print(model)
 elif args.arch == 'resnet18':
     model = resnet18(
-        pretrained=args.pretrained
+        pretrained=False
     )
     model.fc = torch.nn.Linear(512, len(classes_chosen))
     print(model)
