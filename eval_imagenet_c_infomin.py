@@ -169,8 +169,8 @@ for corr in corruptions:
             dataset, 
             batch_size=args.batch_size, 
             shuffle=False,
-            num_workers=30, 
-            pin_memory=False
+            num_workers=10, 
+            pin_memory=True
         )
 
         # Eval on this dataset
@@ -184,4 +184,8 @@ for corr in corruptions:
                 strength,
                 acc
             ))
+        
+        del dataloader
+        del dataset
+        
         
