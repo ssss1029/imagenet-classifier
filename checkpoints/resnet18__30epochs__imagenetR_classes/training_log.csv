@@ -1,0 +1,2 @@
+epoch,train_loss,train_acc1,train_acc5,val_loss,val_acc1,val_acc5
+001,0.99118,78.45818,90.96416,0.42771,88.90000,97.56000
