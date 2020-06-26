@@ -37,11 +37,11 @@ imagenet_r_loader = torch.utils.data.DataLoader(imagenet_r, batch_size=128, shuf
 print("=> Creating Model")
 model = InfoMinResNet50()
 model = torch.nn.DataParallel(model).cuda()
-state_dict = torch.load("checkpoints/tune_infomin_002/checkpoint.pth.tar")['state_dict']
+state_dict = torch.load("checkpoints/retune_infomin_002/checkpoint.pth.tar")['state_dict']
 classifier_head = nn.Sequential(
     nn.Linear(2048, 1000),
 ).cuda()
-classifier_state_dict = torch.load("checkpoints/tune_infomin_002/checkpoint.pth.tar")['classifier_state_dict']
+classifier_state_dict = torch.load("checkpoints/retune_infomin_002/checkpoint.pth.tar")['classifier_state_dict']
 # new_state_dict = dict()
 # for key, value in state_dict.items():
 #     new_key = key.split(".")

@@ -217,15 +217,15 @@ def main_worker(gpu, args):
         batch_size=args.batch_size, shuffle=False,
         num_workers=args.workers, pin_memory=True)
     
-    val_loader_imagenet_r = torch.utils.data.DataLoader(
-        datasets.ImageFolder("/var/tmp/sauravkadavath/distorted_datasets/imagenet_r/", transforms.Compose([
-            transforms.Resize(256),
-            transforms.CenterCrop(224),
-            transforms.ToTensor(),
-            normalize,
-        ])),
-        batch_size=args.batch_size, shuffle=False,
-        num_workers=args.workers, pin_memory=True)
+    # val_loader_imagenet_r = torch.utils.data.DataLoader(
+    #     datasets.ImageFolder("/var/tmp/sauravkadavath/distorted_datasets/imagenet_r/", transforms.Compose([
+    #         transforms.Resize(256),
+    #         transforms.CenterCrop(224),
+    #         transforms.ToTensor(),
+    #         normalize,
+    #     ])),
+    #     batch_size=args.batch_size, shuffle=False,
+    #     num_workers=args.workers, pin_memory=True)
 
     def cosine_annealing(step, total_steps, lr_max, lr_min):
         return lr_min + (lr_max - lr_min) * 0.5 * (
