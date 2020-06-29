@@ -670,8 +670,8 @@ def train(train_loader, model, advnet, criterion, optimizer, scheduler, optimize
             progress.display(i)
     
         if i % 50 == 0:
-            save_image(unnorm_fn(bx_copy[:5].detach().clone()), "bx_TEMP.png")
-            save_image(unnorm_fn(advnet_out_copy[:5].detach().clone()), "advnet_out_TEMP.png")
+            save_image(unnorm_fn(bx_copy[:5].detach().clone()), "bx.png")
+            save_image(unnorm_fn(advnet_out_copy[:5].detach().clone()), "advnet_out.png")
         
     return losses.avg, top1.avg, top5.avg
 
