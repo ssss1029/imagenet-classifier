@@ -134,6 +134,8 @@ else:
     else:
         print("Made save directory", args.save)
 
+import pprint 
+pprint.pprint(vars(args)) 
 
 mean = [0.485, 0.456, 0.406]
 std = [0.229, 0.224, 0.225]
@@ -408,8 +410,18 @@ def main_worker(gpu, ngpus_per_node, args):
     optimizer = torch.optim.SGD(model.parameters(), args.lr,
                                 momentum=args.momentum,
                                 weight_decay=args.weight_decay, nesterov=True)
-                            
-    optimizer_advnet = torch.optim.SGD(advnet.parameters(), args.lr_advnet,
+    
+    # Not all parameters are trainable
+    advnet_trainable_params = dict(list(advnet.named_parameters()))
+    del advnet_trainable_params['module.block1.0.weight']
+    del advnet_trainable_params['module.block1.0.bias']
+    del advnet_trainable_params['module.block1.9.weight']
+    del advnet_trainable_params['module.block1.9.bias']
+    del advnet_trainable_params['module.block2.0.weight']
+    del advnet_trainable_params['module.block2.0.bias']
+    del advnet_trainable_params['module.block2.9.weight']
+    del advnet_trainable_params['module.block2.9.bias']
+    optimizer_advnet = torch.optim.SGD(advnet_trainable_params.values(), args.lr_advnet,
                                 momentum=args.momentum_advnet,
                                 weight_decay=args.weight_decay_advnet, nesterov=True)
 
@@ -571,6 +583,10 @@ def main_worker(gpu, ngpus_per_node, args):
     with open(os.path.join(args.save, 'training_log.csv'), 'w') as f:
         f.write('epoch,train_loss,train_acc1,train_acc5,val_loss,val_acc1,val_acc5\n')
 
+    with open(os.path.join(args.save, 'command.txt'), 'w') as f:
+        import pprint
+        pprint.pprint(vars(args), stream=f) 
+
     for epoch in range(args.start_epoch, args.epochs):
         if args.distributed:
             train_sampler.set_epoch(epoch)
@@ -654,7 +670,7 @@ def train(train_loader, model, advnet, criterion, optimizer, scheduler, optimize
         optimizer_advnet.zero_grad()
         loss_advnet.backward(retain_graph=True)
         optimizer_advnet.step()
-        # scheduler_advnet.step() # No cosine annealing for advnet LR ??? 
+        scheduler_advnet.step() 
 
         # compute gradient for model and do SGD step
         optimizer.zero_grad()
@@ -670,8 +686,8 @@ def train(train_loader, model, advnet, criterion, optimizer, scheduler, optimize
             progress.display(i)
     
         if i % 50 == 0:
-            save_image(unnorm_fn(bx_copy[:5].detach().clone()), "bx.png")
-            save_image(unnorm_fn(advnet_out_copy[:5].detach().clone()), "advnet_out.png")
+            save_image(unnorm_fn(bx_copy[:5].detach().clone()), os.path.join(args.save, "bx.png"))
+            save_image(unnorm_fn(advnet_out_copy[:5].detach().clone()), os.path.join(args.save, "advnet_out.png"))
         
     return losses.avg, top1.avg, top5.avg
 
