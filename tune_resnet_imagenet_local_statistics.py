@@ -25,6 +25,7 @@ import torch.nn.functional as F
 
 from tqdm import tqdm
 
+from util.local_statistics import LocalStatisticsDestroyer
 
 #############################################
 # This is code to generate our test dataset
@@ -85,8 +86,8 @@ parser.add_argument('--resume', default='', type=str, metavar='PATH',
                     help='path to latest checkpoint (default: none)')
 parser.add_argument('-e', '--evaluate', dest='evaluate', action='store_true',
                     help='evaluate model on validation set')
-parser.add_argument('--pretrained', dest='pretrained', action='store_true',
-                    help='use pre-trained model')
+# parser.add_argument('--pretrained', dest='pretrained', action='store_true',
+#                     help='use pre-trained model')
 parser.add_argument('--world-size', default=-1, type=int,
                     help='number of nodes for distributed training')
 parser.add_argument('--rank', default=-1, type=int,
@@ -214,6 +215,8 @@ class ImageNetSubsetDataset(datasets.ImageFolder):
     def __del__(self):
         # Clean up
         shutil.rmtree(self.new_root)
+
+
 
 best_acc1 = 0
 
@@ -346,7 +349,6 @@ def main_worker(gpu, ngpus_per_node, args):
     if args.data_distorted != None:
         if args.symlink_distorted_data_dirs:
             print("Mixing together data directories: ", args.data_distorted)
-
             train_dataset = torch.utils.data.ConcatDataset([
                 CombinedDistortedDatasetFolder(
                     args.data_distorted,
@@ -355,6 +357,7 @@ def main_worker(gpu, ngpus_per_node, args):
                         transforms.RandomHorizontalFlip(),
                         transforms.ToTensor(),
                         normalize,
+                        LocalStatisticsDestroyer()
                     ])
                 ),
                 ImageNetSubsetDataset(
@@ -364,6 +367,7 @@ def main_worker(gpu, ngpus_per_node, args):
                         transforms.RandomHorizontalFlip(),
                         transforms.ToTensor(),
                         normalize,
+                        LocalStatisticsDestroyer()
                     ])
                 ) if args.data_standard != None else []
             ])
@@ -379,6 +383,7 @@ def main_worker(gpu, ngpus_per_node, args):
                         transforms.RandomHorizontalFlip(),
                         transforms.ToTensor(),
                         normalize,
+                        LocalStatisticsDestroyer()
                     ])
                 ) if args.data_standard != None else []
             ]
@@ -392,6 +397,7 @@ def main_worker(gpu, ngpus_per_node, args):
                             transforms.RandomHorizontalFlip(),
                             transforms.ToTensor(),
                             normalize,
+                            LocalStatisticsDestroyer()
                         ])
                     )
                 )
@@ -406,6 +412,7 @@ def main_worker(gpu, ngpus_per_node, args):
                 transforms.RandomHorizontalFlip(),
                 transforms.ToTensor(),
                 normalize,
+                LocalStatisticsDestroyer()
             ])
         )
 
