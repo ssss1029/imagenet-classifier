@@ -241,55 +241,109 @@ def make_block(hidden_planes=64):
         nn.Conv2d(hidden_planes, 3, kernel_size=3, stride=1, padding=1)
     )
 
-class ResNet(torch.nn.Module):
-    def __init__(self, epsilon=0.2, hidden_planes=64, advnet_norm_factor=0.2):
-        super(ResNet, self).__init__()
+# class ResNet(torch.nn.Module):
+#     def __init__(self, epsilon=0.2, hidden_planes=64, advnet_norm_factor=0.2):
+#         super(ResNet, self).__init__()
+        
+#         self.epsilon = epsilon
+#         self.hidden_planes = hidden_planes
+#         self.advnet_norm_factor = advnet_norm_factor
+        
+#         self.block1 = make_block(hidden_planes=hidden_planes)
+#         self.block2 = make_block(hidden_planes=hidden_planes)
+#         # self.block3 = make_block(hidden_planes=hidden_planes)
+#         # self.block4 = make_block(hidden_planes=hidden_planes)
+#         # self.block5 = make_block(hidden_planes=hidden_planes)
+#         # self.block6 = make_block(hidden_planes=hidden_planes)
+    
+#     def forward(self, x):
+        
+#         batch_size = x.shape[0]
+#         select = torch.tensor([random.random() < 0.75 for _ in range(batch_size)])
+#         x_advnet = x[select]
+#         blocks_evalled = []
+        
+#         if random.random() < 1:
+#             block_out = self.block1(x_advnet)
+#             factor = (torch.norm(x_advnet) / torch.norm(block_out))
+#             x_advnet = block_out * factor * self.advnet_norm_factor + x_advnet
+#             blocks_evalled.append(1)
+
+#         if random.random() < 1:
+#             block_out = self.block2(x_advnet)
+#             factor = (torch.norm(x_advnet) / torch.norm(block_out))
+#             x_advnet = block_out * factor * self.advnet_norm_factor + x_advnet
+#             blocks_evalled.append(2)
+
+#         if random.random() < 0:
+#             block_out = self.block3(x_advnet)
+#             factor = (torch.norm(x_advnet) / torch.norm(block_out))
+#             x_advnet = block_out * factor * self.advnet_norm_factor + x_advnet
+#             blocks_evalled.append(3)
+
+#         if random.random() < 0:
+#             block_out = self.block4(x_advnet)
+#             factor = (torch.norm(x_advnet) / torch.norm(block_out))
+#             x_advnet = block_out * factor * self.advnet_norm_factor + x_advnet
+#             blocks_evalled.append(4)
+        
+#         x[select] = x_advnet
+
+#         return {"output" : x, "blocks_evalled" : torch.tensor(blocks_evalled).cuda()}
+
+
+class BlockWrapper(torch.nn.Module):
+    def __init__(self, hidden_planes=64, advnet_norm_factor=0.2):
+        super(BlockWrapper, self).__init__()
+
+        self.block1 = make_block(hidden_planes=hidden_planes)
+        self.block2 = make_block(hidden_planes=hidden_planes)
+        self.advnet_norm_factor = advnet_norm_factor
+    
+    def forward(self, x):
+
+        batch_size = x.shape[0]
+        select = torch.tensor([random.random() < 0.75 for _ in range(batch_size)])
+        x_advnet = x[select]
+
+        block_out = self.block1(x_advnet)
+        factor = (torch.norm(x_advnet) / torch.norm(block_out))
+        x_advnet = block_out * factor * self.advnet_norm_factor + x_advnet
+
+        block_out = self.block2(x_advnet)
+        factor = (torch.norm(x_advnet) / torch.norm(block_out))
+        x_advnet = block_out * factor * self.advnet_norm_factor + x_advnet
+
+        x[select] = x_advnet
+
+        return x
+
+
+class ParallelResNet(torch.nn.Module):
+    def __init__(self, epsilon=0.2, hidden_planes=64, advnet_norm_factor=0.2, num_parallel=len(classes_chosen)):
+        super(ParallelResNet, self).__init__()
         
         self.epsilon = epsilon
         self.hidden_planes = hidden_planes
         self.advnet_norm_factor = advnet_norm_factor
         
-        self.block1 = make_block(hidden_planes=hidden_planes)
-        self.block2 = make_block(hidden_planes=hidden_planes)
-        # self.block3 = make_block(hidden_planes=hidden_planes)
-        # self.block4 = make_block(hidden_planes=hidden_planes)
-        # self.block5 = make_block(hidden_planes=hidden_planes)
-        # self.block6 = make_block(hidden_planes=hidden_planes)
+        self.blocks = torch.nn.ModuleList(
+            [
+                torch.nn.DataParallel(
+                    BlockWrapper(hidden_planes=hidden_planes, advnet_norm_factor=advnet_norm_factor)
+                ) 
+                for i in range(num_parallel)
+            ]
+        )
     
-    def forward(self, x):
+    def forward(self, x, road):
         
-        batch_size = x.shape[0]
-        select = torch.tensor([random.random() < 0.75 for _ in range(batch_size)])
-        x_advnet = x[select]
-        blocks_evalled = []
-        
-        if random.random() < 1:
-            block_out = self.block1(x_advnet)
-            factor = (torch.norm(x_advnet) / torch.norm(block_out))
-            x_advnet = block_out * factor * self.advnet_norm_factor + x_advnet
-            blocks_evalled.append(1)
+        # Assume we put this on GPU before and remove it after.
+        block_chosen = self.blocks[road]
+        x = block_chosen(x)
 
-        if random.random() < 1:
-            block_out = self.block2(x_advnet)
-            factor = (torch.norm(x_advnet) / torch.norm(block_out))
-            x_advnet = block_out * factor * self.advnet_norm_factor + x_advnet
-            blocks_evalled.append(2)
+        return {"output" : x}
 
-        if random.random() < 0:
-            block_out = self.block3(x_advnet)
-            factor = (torch.norm(x_advnet) / torch.norm(block_out))
-            x_advnet = block_out * factor * self.advnet_norm_factor + x_advnet
-            blocks_evalled.append(3)
-
-        if random.random() < 0:
-            block_out = self.block4(x_advnet)
-            factor = (torch.norm(x_advnet) / torch.norm(block_out))
-            x_advnet = block_out * factor * self.advnet_norm_factor + x_advnet
-            blocks_evalled.append(4)
-        
-        x[select] = x_advnet
-
-        return {"output" : x, "blocks_evalled" : torch.tensor(blocks_evalled).cuda()}
 
 # Useful for undoing thetorchvision.transforms.Normalize() 
 # From https://discuss.pytorch.org/t/simple-way-to-inverse-transform-normalization/4821
@@ -406,11 +460,15 @@ def main_worker(gpu, ngpus_per_node, args):
             model = torch.nn.DataParallel(model).cuda()
 
     # Define advnet resnet
-    advnet = ResNet(
+    # advnet = ResNet(
+    #     epsilon=args.advnet_epsilon, 
+    #     advnet_norm_factor=args.advnet_norm_factor
+    # ).cuda()
+    # advnet = torch.nn.DataParallel(advnet).cuda()
+    advnet = ParallelResNet(
         epsilon=args.advnet_epsilon, 
         advnet_norm_factor=args.advnet_norm_factor
-    ).cuda()
-    advnet = torch.nn.DataParallel(advnet).cuda()
+    )
 
     # define loss function (criterion) and optimizer
     criterion = nn.CrossEntropyLoss().cuda(args.gpu)
@@ -429,9 +487,15 @@ def main_worker(gpu, ngpus_per_node, args):
     # del advnet_trainable_params['module.block2.0.bias']
     # del advnet_trainable_params['module.block2.9.weight']
     # del advnet_trainable_params['module.block2.9.bias']
-    optimizer_advnet = torch.optim.SGD(advnet_trainable_params.values(), args.lr_advnet,
-                                momentum=args.momentum_advnet,
-                                weight_decay=args.weight_decay_advnet, nesterov=True)
+    optimizer_advnet = [
+        torch.optim.SGD(
+            advnet.blocks[i].parameters(), 
+            args.lr_advnet, 
+            momentum=args.momentum_advnet, 
+            weight_decay=args.weight_decay_advnet, 
+            nesterov=True
+        ) for i in range(len(classes_chosen))
+    ]
 
 
     # optionally resume from a checkpoint
@@ -568,17 +632,11 @@ def main_worker(gpu, ngpus_per_node, args):
             1,  # since lr_lambda computes multiplicative factor
             1e-6 / (args.lr * args.batch_size / 256.)))
         
-    scheduler_advnet = torch.optim.lr_scheduler.LambdaLR(
-        optimizer_advnet,
-        lr_lambda=lambda step: cosine_annealing(
-            step,
-            args.epochs * len(train_loader),
-            1,  # since lr_lambda computes multiplicative factor
-            1e-6 / (args.lr * args.batch_size / 256.)))
+    scheduler_advnet = None
 
     if args.start_epoch != 0:
         scheduler.step(args.start_epoch * len(train_loader))
-        scheduler_advnet.step(args.start_epoch * len(train_loader))
+        # scheduler_advnet.step(args.start_epoch * len(train_loader))
 
     if args.evaluate:
         validate(val_loader, model, criterion, args)
@@ -659,13 +717,19 @@ def train(train_loader, model, advnet, criterion, optimizer, scheduler, optimize
 
         bx_copy = bx.clone().detach().cpu()
 
-        res = advnet(bx)
-        advnet_out, blocks_evalled = res["output"], res["blocks_evalled"]
+        # Random class target for advnet
+        rand_class = random.randint(0, len(classes_chosen) - 1)
+        # rand_class = random.randint(0, 5) # TODO: Revert to above
+        advnet.blocks[rand_class].cuda()
+
+        res = advnet(bx, road=rand_class)
+        advnet_out = res["output"] 
         advnet_out_copy = advnet_out.clone().detach().cpu()
         logits = model(advnet_out)
 
         loss = criterion(logits, by)
-        loss_advnet = -1.0 * loss
+        # Targeted loss on a random class
+        loss_advnet = F.cross_entropy(logits, torch.ones_like(by) * rand_class)
 
         output, target = logits, by 
 
@@ -676,10 +740,10 @@ def train(train_loader, model, advnet, criterion, optimizer, scheduler, optimize
         top5.update(acc5[0], images.size(0))
 
         # Compute gradient for advnet and do SGD step
-        optimizer_advnet.zero_grad()
+        optimizer_advnet[rand_class].zero_grad()
         loss_advnet.backward(retain_graph=True)
-        optimizer_advnet.step()
-        scheduler_advnet.step() 
+        optimizer_advnet[rand_class].step()
+        # scheduler_advnet.step() 
 
         # compute gradient for model and do SGD step
         optimizer.zero_grad()
@@ -691,13 +755,16 @@ def train(train_loader, model, advnet, criterion, optimizer, scheduler, optimize
         batch_time.update(time.time() - end)
         end = time.time()
 
+        # Save GPU memory
+        advnet.blocks[rand_class].cpu()
+
         if i % args.print_freq == 0:
             progress.display(i)
     
         if i % 50 == 0:
             save_image(unnorm_fn(bx_copy[:5].detach().clone()), os.path.join(args.save, "bx.png"))
             save_image(unnorm_fn(advnet_out_copy[:5].detach().clone()), os.path.join(args.save, "advnet_out.png"))
-            print("Blocks Evalled = ", blocks_evalled)
+            print("Rand Class = ", rand_class)
         
     return losses.avg, top1.avg, top5.avg
 
