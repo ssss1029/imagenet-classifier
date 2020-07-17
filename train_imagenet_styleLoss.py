@@ -53,7 +53,9 @@ parser.add_argument('--symlink-distorted-data-dirs', default=False, action='stor
     help='Set this flag to make a symlinked distorted data directory so that there is the same \
         number of images as using just one distorted data directory')
 parser.add_argument('--data-val', help='path to validation dataset')
+parser.add_argument('--style-loss-lambda', default=1.0, type=float)
 parser.add_argument('--save', default='checkpoints/TEMP', type=str)
+parser.add_argument('--savedir-model', default=None, type=str)
 parser.add_argument('-a', '--arch', metavar='ARCH', default='resnet18',
                     choices=model_names,
                     help='model architecture: ' +
@@ -502,11 +504,12 @@ def train(train_loader, model, criterion, optimizer, scheduler, epoch, args):
     batch_time = AverageMeter('Time', ':6.3f')
     data_time = AverageMeter('Data', ':6.3f')
     losses = AverageMeter('Loss', ':.4e')
+    style_losses = AverageMeter('Style Loss', ':.4e')
     top1 = AverageMeter('Acc@1', ':6.2f')
     top5 = AverageMeter('Acc@5', ':6.2f')
     progress = ProgressMeter(
         len(train_loader),
-        [batch_time, data_time, losses, top1, top5],
+        [batch_time, data_time, losses, style_losses, top1, top5],
         prefix="Epoch: [{}]".format(epoch))
 
     # switch to train mode
@@ -522,14 +525,17 @@ def train(train_loader, model, criterion, optimizer, scheduler, epoch, args):
         by = target.cuda(args.gpu, non_blocking=True)
         
         logits, hiddens = model(bx)
-
-        loss = criterion(logits, by)
-
         output, target = logits, by 
+        mean_hiddens = [torch.mean(h, dim=0, keepdim=True) for h in hiddens]
+
+        ce_loss = criterion(logits, by)
+        style_loss = compute_style_loss(hiddens, mean_hiddens)
+        loss = ce_loss + (style_loss * args.style_loss_lambda)
 
         # measure accuracy and record loss
         acc1, acc5 = accuracy(output, target, topk=(1, 5))
-        losses.update(loss.item(), images.size(0))
+        losses.update(ce_loss.item(), images.size(0))
+        style_losses.update(style_loss.item(), images.size(0))
         top1.update(acc1[0], images.size(0))
         top5.update(acc5[0], images.size(0))
 
@@ -592,8 +598,14 @@ def validate(val_loader, model, criterion, args):
     return losses.avg, top1.avg, top5.avg
 
 
-def save_checkpoint(state, is_best, filename=os.path.join(args.save, "model.pth.tar")):
+def save_checkpoint(state, is_best, filename=None):
+    if args.savedir_model != None:
+        filename = os.path.join(args.savedir_model, "model.pth.tar")
+    else:
+        filename = os.path.join(args.save, "model.pth.tar")
+
     torch.save(state, filename)
+
     # if is_best:
     #     shutil.copyfile(filename, './model_best.pth.tar')
 
@@ -655,6 +667,25 @@ def accuracy(output, target, topk=(1,)):
             res.append(correct_k.mul_(100.0 / batch_size))
         return res
 
+def gram_matrix(y):
+    (b, ch, h, w) = y.size()
+    features = y.view(b, ch, w * h)
+    features_t = features.transpose(1, 2)
+    gram = features.bmm(features_t) / (ch * h * w)
+    return gram
+
+def compute_style_loss(hiddens1, hiddens2):
+    total = 0
+
+    for h1, h2 in zip(hiddens1, hiddens2):
+        B, C, H, W = h1.shape
+        g1 = gram_matrix(h1)
+        g2 = gram_matrix(h2)
+        total += torch.sum((g1 - g2) ** 2)
+        # K = 1 / (C * H * W)
+        # total += torch.sum((K * (g1 - g2)) ** 2) / (C * C)
+
+    return total
 
 if __name__ == '__main__':
     main()
