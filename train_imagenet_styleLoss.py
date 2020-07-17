@@ -7,6 +7,7 @@ import warnings
 import math
 import numpy as np
 from PIL import ImageOps, Image
+import pprint
 import tempfile
 
 import torch
@@ -127,6 +128,8 @@ else:
     else:
         print("Made save directory", args.save)
 
+print("Arguments: ")
+pprint.PrettyPrinter(indent=4).pprint(vars(args))
 
 mean = [0.485, 0.456, 0.406]
 std = [0.229, 0.224, 0.225]
@@ -462,6 +465,9 @@ def main_worker(gpu, ngpus_per_node, args):
 
     with open(os.path.join(args.save, 'training_log.csv'), 'w') as f:
         f.write('epoch,train_loss,train_acc1,train_acc5,val_loss,val_acc1,val_acc5\n')
+    
+    with open(os.path.join(args.save, 'training_command.txt'), 'w') as f:
+        pprint.PrettyPrinter(indent=4, stream=f).pprint(vars(args))
 
     for epoch in range(args.start_epoch, args.epochs):
         if args.distributed:
