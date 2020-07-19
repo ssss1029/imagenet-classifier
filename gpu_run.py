@@ -19,11 +19,37 @@ class Config:
     SHARED_ARGS = ""
 
     # Specifies tasks to run. It maps tmux session name to the command to run in that session.
-    JOBS = {
-        "vgg16__imagenetR_classes__test1": {
-            "num_gpus": 4,
-            "command": "python3 train_deepaugment_realtime.py --num-distortions-feedforward=2 --lr=0.1 --epochs=30 --save=checkpoints/vgg16__imagenetR_classes__test1"
+    JOBS = {        
+        "imagenet_vgg16_tune_styleLossLambda_2e-2_ImageNetR_classes_lr1e-3_epochs30": {
+            "num_gpus" : 1,
+            "command" : "python3 tune_imagenet_distorted.py \
+                        --data-standard=/data/imagenet/train/ \
+                        --data-val=/data/imagenet/val/ \
+                        --save=checkpoints/imagenet_vgg16_tune_styleLossLambda_2e-2_ImageNetR_classes_lr1e-3_epochs30 \
+                        --savedir-model=/data2/sauravkadavath/imagenet-classifier-checkpoints/imagenet_vgg16_tune_styleLossLambda_2e-2_ImageNetR_classes_lr1e-3_epochs30 \
+                        --arch=vgg16 \
+                        --lr=0.001 \
+                        --style-loss-lambda=0.02 \
+                        --pretrained \
+                        --batch-size=128 \
+                        --epochs=30"
         }
+
+        "imagenet_vgg16_tune_styleLossLambda_0_ImageNetR_classes_lr1e-3_epochs30": {
+            "num_gpus" : 1,
+            "command" : "python3 tune_imagenet_distorted.py \
+                        --data-standard=/data/imagenet/train/ \
+                        --data-val=/data/imagenet/val/ \
+                        --save=checkpoints/imagenet_vgg16_tune_styleLossLambda_0_ImageNetR_classes_lr1e-3_epochs30 \
+                        --savedir-model=/data2/sauravkadavath/imagenet-classifier-checkpoints/imagenet_vgg16_tune_styleLossLambda_0_ImageNetR_classes_lr1e-3_epochs30 \
+                        --arch=vgg16 \
+                        --lr=0.001 \
+                        --style-loss-lambda=0.0 \
+                        --pretrained \
+                        --batch-size=128 \
+                        --epochs=30"
+        }
+
     }
 
     # Time to wait between putting jobs on GPUs (in seconds). This is useful because it might take time 

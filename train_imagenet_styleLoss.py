@@ -606,6 +606,8 @@ def validate(val_loader, model, criterion, args):
 
 def save_checkpoint(state, is_best, filename=None):
     if args.savedir_model != None:
+        if not os.path.exists(args.savedir_model):
+            os.makedirs(args.savedir_model)
         filename = os.path.join(args.savedir_model, "model.pth.tar")
     else:
         filename = os.path.join(args.save, "model.pth.tar")

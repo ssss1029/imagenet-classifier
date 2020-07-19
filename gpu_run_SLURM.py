@@ -10,10 +10,11 @@ import subprocess
 import sys
 import time
 
-slurm_target = sys.argv[1]
-if not slurm_target:
+if len(sys.argv) != 2:
     print("Usage: python3 fname.py slurm_target")
     exit()
+
+slurm_target = sys.argv[1]
 
 class Config:
     """
@@ -30,7 +31,7 @@ class Config:
         # "distort_2" : "python3 distort_imagenet_instance_ResNet_3.py --total-workers=4 --worker-number=2",
         # "distort_3" : "python3 distort_imagenet_instance_ResNet_3.py --total-workers=4 --worker-number=3",
 
-        "imagenet_vgg16_tune_styleLossLambda_2e-2_ImageNetR_classes_lr1e-3_epochs30": "python3 tune_imagenet_distorted.py \
+        "imagenet_vgg16_tune_styleLossLambda_2e-2_ImageNetR_classes_lr1e-3_epochs30": "python3 train_imagenet_styleLoss.py \
             --data-standard=/data/imagenet/train/ \
             --data-val=/data/imagenet/val/ \
             --save=checkpoints/imagenet_vgg16_tune_styleLossLambda_2e-2_ImageNetR_classes_lr1e-3_epochs30 \
@@ -42,7 +43,7 @@ class Config:
             --batch-size=128 \
             --epochs=30",
 
-        "imagenet_vgg16_tune_styleLossLambda_0_ImageNetR_classes_lr1e-3_epochs30": "python3 tune_imagenet_distorted.py \
+        "imagenet_vgg16_tune_styleLossLambda_0_ImageNetR_classes_lr1e-3_epochs30": "python3 train_imagenet_styleLoss.py \
             --data-standard=/data/imagenet/train/ \
             --data-val=/data/imagenet/val/ \
             --save=checkpoints/imagenet_vgg16_tune_styleLossLambda_0_ImageNetR_classes_lr1e-3_epochs30 \
