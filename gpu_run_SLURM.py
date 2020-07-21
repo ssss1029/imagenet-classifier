@@ -31,29 +31,29 @@ class Config:
         # "distort_2" : "python3 distort_imagenet_instance_ResNet_3.py --total-workers=4 --worker-number=2",
         # "distort_3" : "python3 distort_imagenet_instance_ResNet_3.py --total-workers=4 --worker-number=3",
 
-        "imagenet_vgg16_tune_styleLossLambda_2e-2_ImageNetR_classes_lr1e-3_epochs30": "python3 train_imagenet_styleLoss.py \
+        "imagenet_vgg16_tune_styleLossLambda_1e-1_ImageNetR_classes_lr1e-3_epochs30": "python3 train_imagenet_styleLoss.py \
             --data-standard=/data/imagenet/train/ \
             --data-val=/data/imagenet/val/ \
-            --save=checkpoints/imagenet_vgg16_tune_styleLossLambda_2e-2_ImageNetR_classes_lr1e-3_epochs30 \
-            --savedir-model=/data2/sauravkadavath/imagenet-classifier-checkpoints/imagenet_vgg16_tune_styleLossLambda_2e-2_ImageNetR_classes_lr1e-3_epochs30 \
+            --save=checkpoints/imagenet_vgg16_tune_styleLossLambda_1e-1_ImageNetR_classes_lr1e-3_epochs30 \
+            --savedir-model=/data2/sauravkadavath/imagenet-classifier-checkpoints/imagenet_vgg16_tune_styleLossLambda_1e-1_ImageNetR_classes_lr1e-3_epochs30 \
             --arch=vgg16 \
             --lr=0.001 \
-            --style-loss-lambda=0.02 \
+            --style-loss-lambda=0.1 \
             --pretrained \
             --batch-size=128 \
             --epochs=30",
-
-        "imagenet_vgg16_tune_styleLossLambda_0_ImageNetR_classes_lr1e-3_epochs30": "python3 train_imagenet_styleLoss.py \
+        
+        "imagenet_vgg16_tune_styleLossLambda_5e-1_ImageNetR_classes_lr1e-3_epochs30": "python3 train_imagenet_styleLoss.py \
             --data-standard=/data/imagenet/train/ \
             --data-val=/data/imagenet/val/ \
-            --save=checkpoints/imagenet_vgg16_tune_styleLossLambda_0_ImageNetR_classes_lr1e-3_epochs30 \
-            --savedir-model=/data2/sauravkadavath/imagenet-classifier-checkpoints/imagenet_vgg16_tune_styleLossLambda_0_ImageNetR_classes_lr1e-3_epochs30 \
+            --save=checkpoints/imagenet_vgg16_tune_styleLossLambda_5e-1_ImageNetR_classes_lr1e-3_epochs30 \
+            --savedir-model=/data2/sauravkadavath/imagenet-classifier-checkpoints/imagenet_vgg16_tune_styleLossLambda_5e-1_ImageNetR_classes_lr1e-3_epochs30 \
             --arch=vgg16 \
             --lr=0.001 \
-            --style-loss-lambda=0.0 \
+            --style-loss-lambda=0.5 \
             --pretrained \
             --batch-size=128 \
-            --epochs=30"
+            --epochs=30",
     }
 
     # Time to wait between putting jobs on GPUs (in seconds). This is useful because it might take time 
