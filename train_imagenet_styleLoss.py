@@ -532,10 +532,9 @@ def train(train_loader, model, criterion, optimizer, scheduler, epoch, args):
         
         logits, hiddens = model(bx)
         output, target = logits, by 
-        mean_hiddens = [torch.mean(h, dim=0, keepdim=True) for h in hiddens]
 
         ce_loss = criterion(logits, by)
-        style_loss = compute_style_loss(hiddens, mean_hiddens)
+        style_loss = compute_style_loss(hiddens)
         loss = ce_loss + (style_loss * args.style_loss_lambda)
 
         # measure accuracy and record loss
@@ -682,16 +681,15 @@ def gram_matrix(y):
     gram = features.bmm(features_t) / (ch * h * w)
     return gram
 
-def compute_style_loss(hiddens1, hiddens2):
+def compute_style_loss(hiddens):
     total = 0
 
-    for h1, h2 in zip(hiddens1, hiddens2):
-        B, C, H, W = h1.shape
-        g1 = gram_matrix(h1)
-        g2 = gram_matrix(h2)
-        total += torch.sum((g1 - g2) ** 2)
-        # K = 1 / (C * H * W)
-        # total += torch.sum((K * (g1 - g2)) ** 2) / (C * C)
+    for h in hiddens:
+        B, C, H, W = h.shape
+        g_data = gram_matrix(h)
+        g_mean = torch.mean(g_data, dim=0, keepdim=True)
+        print(g_data.shape, g_mean.shape)
+        total += torch.sum((g_data - g_mean) ** 2)
 
     return total
 
