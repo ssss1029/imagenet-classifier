@@ -688,7 +688,7 @@ def compute_style_loss(hiddens):
         B, C, H, W = h.shape
         g_data = gram_matrix(h)
         g_mean = torch.mean(g_data, dim=0, keepdim=True)
-        print(g_data.shape, g_mean.shape)
+        # print(g_data.shape, g_mean.shape)
         total += torch.sum((g_data - g_mean) ** 2)
 
     return total
